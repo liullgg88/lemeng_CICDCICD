@@ -1,0 +1,29 @@
+FROM jenkins/inbound-agent:4.13.3-1
+
+MAINTAINER liuliangliang
+
+# 切换到 root 账户进行操作
+USER root
+ENV SHELL=/bin/bash
+WORKDIR /home/jenkins
+# 安装 maven
+COPY apache-maven-3.9.6-bin.tar.gz .
+COPY jdk-8u381-linux-x64.tar.gz .
+COPY kustomize_v5.3.0_linux_amd64.tar.gz .
+
+RUN tar -zxf apache-maven-3.9.6-bin.tar.gz && \
+    mv apache-maven-3.9.6 /usr/local && \
+    rm -rf apache-maven-3.9.6-bin.tar.gz && \
+    ln -s /usr/local/apache-maven-3.9.6/bin/mvn /usr/bin/mvn && \
+    ln -s /usr/local/apache-maven-3.9.6 /usr/local/apache-maven && \
+    mkdir -p /usr/local/apache-maven/repo
+COPY settings_lemeng.xml /usr/local/apache-maven/conf/settings.xml
+RUN tar -zvxf jdk-8u381-linux-x64.tar.gz && \
+    mv jdk1.8.0_381 /usr/local/java/ && \
+    echo "JAVA_HOME=/usr/local/java" >>/etc/profile && \
+    echo "CLASSPATH=$JAVA_HOME/lib" >>/etc/profile && \
+    echo "PATH=$JAVA_HOME/bin:$PATH" >> /etc/profile && \
+    rm -rf jdk-8u381-linux-x64.tar.gz
+RUN tar -zvxf kustomize_v5.3.0_linux_amd64.tar.gz && \
+    mv kustomize /usr/local/bin/ && \
+    rm -rf kustomize_v5.3.0_linux_amd64.tar.gz
