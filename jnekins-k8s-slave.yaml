@@ -1,0 +1,95 @@
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  labels:
+    jenkins: "slave"
+    jenkins/label-digest: "200f56d0c10e457a5d84a91b055a1730c3dc7abc"
+    jenkins/label: "jenkins-agent"
+  name: "jenkins-agent-tljgw"
+  namespace: "jenkins"
+spec:
+  containers:
+  - env:
+    - name: "JENKINS_SECRET"
+      value: "********"
+    - name: "JENKINS_TUNNEL"
+      value: "1.94.17.17:50000"
+    - name: "JENKINS_AGENT_NAME"
+      value: "jenkins-agent-tljgw"
+    - name: "JENKINS_NAME"
+      value: "jenkins-agent-tljgw"
+    - name: "JENKINS_AGENT_WORKDIR"
+      value: "/home/jenkins/agent"
+    - name: "JENKINS_URL"
+      value: "http://1.94.17.17:8080/"
+    image: "swr.cn-east-3.myhuaweicloud.com/hwy-test/jenkins-slave-maven:kustomize"
+    imagePullPolicy: "Always"
+    name: "jnlp"
+    resources: {}
+    securityContext:
+      privileged: false
+      runAsUser: 0
+    tty: true
+    volumeMounts:
+    - mountPath: "/Users/pingguo/Repository_lemeng"
+      name: "volume-0"
+      readOnly: false
+    - mountPath: "/home/jenkins/agent"
+      name: "workspace-volume"
+      readOnly: false
+    workingDir: "/home/jenkins/agent"
+  - env:
+    - name: "DOCKER_TLS_CERTDIR"
+      value: ""
+    image: "docker:19-dind"
+    imagePullPolicy: "IfNotPresent"
+    name: "dockerd"
+    resources: {}
+    securityContext:
+      privileged: true
+      runAsUser: 0
+    tty: false
+    volumeMounts:
+    - mountPath: "/Users/pingguo/Repository_lemeng"
+      name: "volume-0"
+      readOnly: false
+    - mountPath: "/home/jenkins/agent"
+      name: "workspace-volume"
+      readOnly: false
+    workingDir: "/home/jenkins/agent"
+  - args:
+    - "9999999"
+    command:
+    - "sleep"
+    env:
+    - name: "DOCKER_HOST"
+      value: "127.0.0.1"
+    image: "docker:latest"
+    imagePullPolicy: "IfNotPresent"
+    name: "docker"
+    resources: {}
+    securityContext:
+      privileged: false
+      runAsUser: 0
+    tty: true
+    volumeMounts:
+    - mountPath: "/Users/pingguo/Repository_lemeng"
+      name: "volume-0"
+      readOnly: false
+    - mountPath: "/home/jenkins/agent"
+      name: "workspace-volume"
+      readOnly: false
+    workingDir: "/home/jenkins/agent"
+  hostNetwork: false
+  nodeSelector:
+    kubernetes.io/os: "linux"
+  restartPolicy: "Never"
+  securityContext:
+    runAsUser: 0
+  volumes:
+  - hostPath:
+      path: "/Users/pingguo/Repository_lemeng"
+    name: "volume-0"
+  - emptyDir:
+      medium: ""
+    name: "workspace-volume"
