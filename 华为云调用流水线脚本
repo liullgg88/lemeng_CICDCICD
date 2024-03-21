@@ -1,0 +1,20 @@
+# coding=utf-8
+import requests
+from apig_sdk import signer
+
+if __name__ == '__main__':
+    sig = signer.Signer()
+    # Set the AK/SK to sign and authenticate the request.
+    sig.Key = "xxx"
+    sig.Secret = "xxxx"
+    r = signer.HttpRequest("POST", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/${ProjectID}/api/pipelines/${PipelineID}/run")
+    r.headers = {"content-type": "application/json"}
+    # r.body = ""
+    r.body = "{\"sources\":[],\"description\":\"\",\"variables\":[],\"choose_jobs\":[\"Task_4\"],\"choose_stages\":[\"0\"]}"
+    r.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/${ProjectID}/api/pipelines/${PipelineID}/run"
+    sig.Sign(r)
+    print(r.headers["X-Sdk-Date"])
+    print(r.headers["Authorization"])
+    resp = requests.request("post", r.url, headers=r.headers, data=r.body)
+    print(resp.status_code, resp.reason)
+    print(resp.content)
