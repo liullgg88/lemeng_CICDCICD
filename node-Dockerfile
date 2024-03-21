@@ -1,0 +1,24 @@
+FROM alibaba-cloud-linux-3-registry.cn-hangzhou.cr.aliyuncs.com/alinux3/alinux3 as nodes
+WORKDIR /workdir
+COPY docker-ce.repo /etc/yum.repos.d/docker-ce.repo
+COPY node-v16.15.0-linux-x64.tar . 
+RUN yum install -y git docker-ce-cli tar && yum clean all
+RUN tar -xvf node-v16.15.0-linux-x64.tar && \
+    ln -s /workdir/node-v16.15.0-linux-x64/bin/node /usr/local/bin/node && \ 
+    ln -s /workdir/node-v16.15.0-linux-x64/bin/npm /usr/local/bin/npm  && \
+    npm install -g yarn 
+    
+    
+
+FROM alibaba-cloud-linux-3-registry.cn-hangzhou.cr.aliyuncs.com/alinux3/alinux3
+WORKDIR /workdir
+COPY docker-ce.repo /etc/yum.repos.d/docker-ce.repo
+RUN yum install -y git docker-ce-cli tar && yum clean all
+ENV TZ=Asia/Shanghai
+
+COPY --from=nodes //workdir/node-v16.15.0-linux-x64 /usr/local/node
+
+RUN ln -s /usr/local/node/bin/node /usr/local/bin/node && \ 
+    ln -s /usr/local/node/bin/npm /usr/local/bin/npm  && \
+    ln -s /usr/local/node/bin/yarn /usr/local/bin/yarn && \
+    curl -fsSL https://get.pnpm.io/install.sh |  env PNPM_VERSION=8.14.1 sh - 
