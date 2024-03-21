@@ -1,0 +1,28 @@
+FROM alibaba-cloud-linux-3-registry.cn-hangzhou.cr.aliyuncs.com/alinux3/alinux3 as jdk
+WORKDIR /workdir
+COPY docker-ce.repo /etc/yum.repos.d/docker-ce.repo
+RUN yum install -y git docker-ce-cli tar && yum clean all
+COPY jdk-8u381-linux-x64.tar.gz .
+COPY apache-ant-1.9.7-bin.tar.gz .
+RUN tar -xvf jdk-8u381-linux-x64.tar.gz && \
+    mv jdk1.8.0_381 /usr/local/java/
+RUN tar zxvf apache-ant-1.9.7-bin.tar.gz && \
+    mv apache-ant-1.9.7 /usr/local/ant && \
+    rm -rf apache-ant-1.9.7-bin.tar.gz
+
+
+FROM alibaba-cloud-linux-3-registry.cn-hangzhou.cr.aliyuncs.com/alinux3/alinux3
+WORKDIR /workdir
+COPY docker-ce.repo /etc/yum.repos.d/docker-ce.repo
+RUN yum install -y git docker-ce-cli tar && yum clean all
+ENV TZ=Asia/Shanghai
+
+COPY --from=jdk /usr/local/java /usr/local/java
+COPY --from=jdk /usr/local/ant /usr/local/ant
+
+ENV JAVA_HOME=/usr/local/java
+ENV CLASSPATH=$JAVA_HOME/lib
+ENV PATH=$JAVA_HOME/bin:$PATH
+
+ENV ANT_HOME=/usr/local/ant/
+ENV PATH=$ANT_HOME/bin:$PATH
