@@ -3,18 +3,17 @@ import json
 import requests
 from apig_sdk import signer
 from datetime import datetime
-
-project_id=""
-pipeline_id=""
+pipeline_id="d7580ec1f3ab4f7bae2028c8bd5c66cd"
+project_id="8672d4f0470f4eaf8bd75e2589934d21"
 if __name__ == '__main__':
     sig = signer.Signer()
     # Set the AK/SK to sign and authenticate the request.
     sig.Key = "xxxx"
     sig.Secret = "xxxx"
-    r = signer.HttpRequest("POST", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/${project_id}/api/pipelines/${pipeline_id}/run")
+    r = signer.HttpRequest("POST", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/%s/api/pipelines/%s/run" % (project_id,pipeline_id))
     r.headers = {"content-type": "application/json"}
     r.body = "{\"sources\":[],\"description\":\"\",\"variables\":[],\"choose_jobs\":[\"168864794392314618d37-850e-46c8-b911-d2d644b19430\"],\"choose_stages\":[\"0\"]}"
-    r.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/${project_id}/api/pipelines/${pipeline_id}/run"
+    r.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/%s/api/pipelines/%s/run" % (project_id,pipeline_id)
     sig.Sign(r)
     resp = requests.request("post", r.url, headers=r.headers, data=r.body)
     json_str=resp.content
@@ -24,12 +23,12 @@ if __name__ == '__main__':
     data = json.loads(json_str_decoded)
     # 从字典中提取pipeline_run_id的值
     pipeline_run_id = data['pipeline_run_id']
-    pipeline_url="https://devcloud.cn-east-3.huaweicloud.com/cicd/project/${project_id}/pipeline/detail/${pipeline_id}/%s?v=1" % pipeline_run_id
+    pipeline_url="https://devcloud.cn-east-3.huaweicloud.com/cicd/project/%s/pipeline/detail/%s/%s?v=1" %  (project_id,pipeline_id,pipeline_run_id)
     while True: 
-      r1 = signer.HttpRequest("GET", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/${project_id}/api/pipelines/${pipeline_id}/pipeline-runs/detail?pipeline_run_id=%s" % pipeline_run_id)
+      r1 = signer.HttpRequest("GET", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/%s/api/pipelines/%s/pipeline-runs/detail?pipeline_run_id=%s" %  (project_id,pipeline_id,pipeline_run_id))
       r1.headers = {"content-type": "application/json"}
       r1.body = ""
-      r1.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/${project_id}/api/pipelines/${pipeline_id}/pipeline-runs/detail?pipeline_run_id=%s" % pipeline_run_id
+      r1.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/%s/api/pipelines/%s/pipeline-runs/detail?pipeline_run_id=%s" %  (project_id,pipeline_id,pipeline_run_id)
       sig.Sign(r1)
       response = requests.request("GET", r1.url, headers=r1.headers, data=r1.body)
       json_string=response.text
