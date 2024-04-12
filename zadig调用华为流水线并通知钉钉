@@ -15,11 +15,7 @@ if __name__ == '__main__':
     r.body = "{\"sources\":[],\"description\":\"\",\"variables\":[],\"choose_jobs\":[\"168864794392314618d37-850e-46c8-b911-d2d644b19430\"],\"choose_stages\":[\"0\"]}"
     r.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/8672d4f0470f4eaf8bd75e2589934d21/api/pipelines/d7580ec1f3ab4f7bae2028c8bd5c66cd/run"
     sig.Sign(r)
-    print(r.headers["X-Sdk-Date"])
-    print(r.headers["Authorization"])
     resp = requests.request("post", r.url, headers=r.headers, data=r.body)
-    print(resp.status_code, resp.reason)
-    print(resp.content)
     json_str=resp.content
     # 解码字节字符串为普通字符串
     json_str_decoded = json_str.decode('utf-8')
@@ -27,7 +23,6 @@ if __name__ == '__main__':
     data = json.loads(json_str_decoded)
     # 从字典中提取pipeline_run_id的值
     pipeline_run_id = data['pipeline_run_id']
-    print(pipeline_run_id) 
     x="https://devcloud.cn-east-3.huaweicloud.com/cicd/project/8672d4f0470f4eaf8bd75e2589934d21/pipeline/detail/d7580ec1f3ab4f7bae2028c8bd5c66cd/%s?v=1" % pipeline_run_id
     while True: 
       r1 = signer.HttpRequest("GET", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/8672d4f0470f4eaf8bd75e2589934d21/api/pipelines/d7580ec1f3ab4f7bae2028c8bd5c66cd/pipeline-runs/detail?pipeline_run_id=%s" % pipeline_run_id)
@@ -62,7 +57,6 @@ if __name__ == '__main__':
          print(end_date)
          print(pipeline_run_status)
          break
-    print(x)
     # 示例消息内容
     message = {
             "msgtype":"markdown",
@@ -72,13 +66,12 @@ if __name__ == '__main__':
                        "> **流水线名称:** %s\n\n"
                        "> **开始时间:** %s\n\n" 
                        "> **结束时间:** %s\n\n" 
-                       "> **运行状态:** %s\n\n" 
-                       "> **流水线地址:** %s\n\n" 
+                       "> **运行状态:** <font color=#00FF00>%s</font>\n\n" 
+                       "> [**流水线地址**](%s)\n\n" 
                        "> **自动化测试** " % (pipeline_name,pipeline_name,start_date,end_date,pipeline_run_status,x)
 
             }
         }
-print(message) 
 def send_dingtalk_message(webhook_url, message):
     headers = {'Content-Type': 'application/json'}
     response = requests.post(webhook_url, data=json.dumps(message), headers=headers)
@@ -89,4 +82,3 @@ webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=425ff9a2f17b814
  
 # 发送消息
 response_text = send_dingtalk_message(webhook_url, message)
-print(response_text)
