@@ -2,14 +2,14 @@
 import json
 import requests
 from apig_sdk import signer
-from datetime import datetime
+import datetime
 pipeline_id="d7580ec1f3ab4f7bae2028c8bd5c66cd"
 project_id="8672d4f0470f4eaf8bd75e2589934d21"
 if __name__ == '__main__':
     sig = signer.Signer()
     # Set the AK/SK to sign and authenticate the request.
-    sig.Key = "xxxx"
-    sig.Secret = "xxxx"
+    sig.Key = "EUWCTMRJSEMOPXMQBYCQ"
+    sig.Secret = "3gPhrII9WTDX1utNevxkNgbzj09SypiI7MEkS9re"
     r = signer.HttpRequest("POST", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/%s/api/pipelines/%s/run" % (project_id,pipeline_id))
     r.headers = {"content-type": "application/json"}
     r.body = "{\"sources\":[],\"description\":\"\",\"variables\":[],\"choose_jobs\":[\"168864794392314618d37-850e-46c8-b911-d2d644b19430\"],\"choose_stages\":[\"0\"]}"
@@ -43,8 +43,10 @@ if __name__ == '__main__':
          continue
       else:
          # 示例时间戳
-         start_date = datetime.utcfromtimestamp(pipeline_run_start_time / 1000)
-         end_date = datetime.utcfromtimestamp(pipeline_run_end_time / 1000)
+         print(pipeline_run_start_time)
+         print(pipeline_run_end_time)
+         start_date = datetime.datetime.fromtimestamp(pipeline_run_start_time / 1000)
+         end_date = datetime.datetime.fromtimestamp(pipeline_run_end_time / 1000)
          break
     # 示例消息内容
     message = {
