@@ -1,0 +1,86 @@
+# coding=utf-8
+import json
+import requests
+from apig_sdk import signer
+from datetime import datetime
+
+if __name__ == '__main__':
+    sig = signer.Signer()
+    # Set the AK/SK to sign and authenticate the request.
+    sig.Key = "EUWCTMRJSEMOPXMQBYCQ"
+    sig.Secret = "3gPhrII9WTDX1utNevxkNgbzj09SypiI7MEkS9re"
+    r = signer.HttpRequest("POST", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/8672d4f0470f4eaf8bd75e2589934d21/api/pipelines/d7580ec1f3ab4f7bae2028c8bd5c66cd/run")
+    r.headers = {"content-type": "application/json"}
+    # r.body = ""
+    r.body = "{\"sources\":[],\"description\":\"\",\"variables\":[],\"choose_jobs\":[\"168864794392314618d37-850e-46c8-b911-d2d644b19430\"],\"choose_stages\":[\"0\"]}"
+    r.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/8672d4f0470f4eaf8bd75e2589934d21/api/pipelines/d7580ec1f3ab4f7bae2028c8bd5c66cd/run"
+    sig.Sign(r)
+    print(r.headers["X-Sdk-Date"])
+    print(r.headers["Authorization"])
+    resp = requests.request("post", r.url, headers=r.headers, data=r.body)
+    print(resp.status_code, resp.reason)
+    print(resp.content)
+    json_str=resp.content
+    # 解码字节字符串为普通字符串
+    json_str_decoded = json_str.decode('utf-8')
+    # 使用json模块解析字符串为Python对象（字典）
+    data = json.loads(json_str_decoded)
+    # 从字典中提取pipeline_run_id的值
+    pipeline_run_id = data['pipeline_run_id']
+    print(pipeline_run_id) 
+    x="https://devcloud.cn-east-3.huaweicloud.com/cicd/project/8672d4f0470f4eaf8bd75e2589934d21/pipeline/detail/d7580ec1f3ab4f7bae2028c8bd5c66cd/%s?v=1" % pipeline_run_id
+    while True: 
+      r1 = signer.HttpRequest("GET", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/8672d4f0470f4eaf8bd75e2589934d21/api/pipelines/d7580ec1f3ab4f7bae2028c8bd5c66cd/pipeline-runs/detail?pipeline_run_id=%s" % pipeline_run_id)
+      r1.headers = {"content-type": "application/json"}
+      r1.body = ""
+      #r1.body = "{\"sources\":[],\"description\":\"\",\"variables\":[],\"choose_jobs\":[\"168864794392314618d37-850e-46c8-b911-d2d644b19430\"],\"choose_stages\":[\"0\"]}"
+      r1.url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/8672d4f0470f4eaf8bd75e2589934d21/api/pipelines/d7580ec1f3ab4f7bae2028c8bd5c66cd/pipeline-runs/detail?pipeline_run_id=%s" % pipeline_run_id
+      sig.Sign(r1)
+      # print(r1.headers["X-Sdk-Date"])
+      # print(r1.headers["Authorization"])
+      response = requests.request("GET", r1.url, headers=r1.headers, data=r1.body)
+      #print(response.text)
+      json_string=response.text
+      # 解码字节字符串为普通字符串
+      data1 = json.loads(json_string)
+      # 从字典中提取pipeline_run_id的值
+      #print(data1)
+      pipeline_name = data1['name']
+      pipeline_run_status = data1['status']
+      pipeline_run_start_time = data1['start_time']
+      pipeline_run_end_time = data1['end_time']
+      if pipeline_run_status == "RUNNING":
+         continue
+      else:
+         # 示例时间戳
+         #start_time = pipeline_run_start_time
+         #end_time = pipeline_run_end_time
+         start_date = datetime.utcfromtimestamp(pipeline_run_start_time / 1000)
+         end_date = datetime.utcfromtimestamp(pipeline_run_end_time / 1000)
+         print(pipeline_name)
+         print(start_date)
+         print(end_date)
+         print(pipeline_run_status)
+         result = "流水线名称:%s\n开始时间: %s\n结束时间: %s\n运行结果: %s\n流水线地址:%s\n" % (pipeline_name,start_date,end_date,pipeline_run_status,x)
+         break
+    print(x)
+    print(result)
+# 示例消息内容
+message = {
+    "msgtype": "text",  # 消息类型，这里以文本消息为例
+    "text": {
+        "content": "%s 工作流" % result
+    }
+}
+ 
+def send_dingtalk_message(webhook_url, message):
+    headers = {'Content-Type': 'application/json'}
+    response = requests.post(webhook_url, data=json.dumps(message), headers=headers)
+    return response.text
+ 
+# 钉钉机器人的Webhook地址
+webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=425ff9a2f17b8143c46a951ad3eba20ff69e9b615fcb7d4b8b5bdf383dd56568'
+ 
+# 发送消息
+response_text = send_dingtalk_message(webhook_url, message)
+print(response_text)
