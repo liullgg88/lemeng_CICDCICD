@@ -42,8 +42,8 @@ if __name__ == '__main__':
          continue
       else:
          # 示例时间戳
-         start_date = datetime.utcfromtimestamp(pipeline_run_start_time / 1000)
-         end_date = datetime.utcfromtimestamp(pipeline_run_end_time / 1000)
+         start_date = datetime.fromtimestamp(pipeline_run_start_time / 1000)
+         end_date = datetime.fromtimestamp(pipeline_run_end_time / 1000)
          break
     # 示例消息内容
     message = {
