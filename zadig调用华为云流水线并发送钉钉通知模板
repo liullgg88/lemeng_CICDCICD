@@ -2,7 +2,7 @@
 import json
 import requests
 from apig_sdk import signer
-import datetime
+from datetime import datetime
 pipeline_id="d7580ec1f3ab4f7bae2028c8bd5c66cd"
 project_id="8672d4f0470f4eaf8bd75e2589934d21"
 if __name__ == '__main__':
@@ -43,10 +43,8 @@ if __name__ == '__main__':
          continue
       else:
          # 示例时间戳
-         print(pipeline_run_start_time)
-         print(pipeline_run_end_time)
-         start_date = datetime.datetime.fromtimestamp(pipeline_run_start_time / 1000)
-         end_date = datetime.datetime.fromtimestamp(pipeline_run_end_time / 1000)
+         start_date = datetime.fromtimestamp(pipeline_run_start_time / 1000)
+         end_date = datetime.fromtimestamp(pipeline_run_end_time / 1000)
          break
     # 示例消息内容
     message = {
