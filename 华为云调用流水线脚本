@@ -57,7 +57,7 @@ if __name__ == '__main__':
                        "> **结束时间:** %s\n\n" 
                        "> **运行状态:** <font color=#32CD32>%s</font>\n\n" 
                        "> [**流水线地址**](%s)\n\n" 
-                       "> **工作流** " % (pipeline_name,pipeline_name,start_date,end_date,pipeline_run_status,pipeline_url)
+                       "> **工作流** " % (pipeline_name,pipeline_name,start_date,end_date,pipeline_run_status,pipeline_url)  #工作流是钉钉机器人里设置的关键字
 
             }
         }
