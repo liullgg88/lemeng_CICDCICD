@@ -8,8 +8,8 @@ project_id="${ProjectID}"
 if __name__ == '__main__':
     sig = signer.Signer()
     # Set the AK/SK to sign and authenticate the request.
-    sig.Key = "EUWCTMRJSEMOPXMQBYCQ"
-    sig.Secret = "3gPhrII9WTDX1utNevxkNgbzj09SypiI7MEkS9re"
+    sig.Key = "xxxxx"
+    sig.Secret = "xxxx"
     r = signer.HttpRequest("POST", "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/%s/api/pipelines/%s/run" % (project_id,pipeline_id))
     r.headers = {"content-type": "application/json"}
     r.body = "{\"sources\":[],\"description\":\"\",\"variables\":[],\"choose_jobs\":[\"${choose_jobs}\"],\"choose_stages\":[\"${choose_stages}\"]}"
