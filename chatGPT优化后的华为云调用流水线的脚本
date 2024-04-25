@@ -19,8 +19,8 @@ def send_request(method, url, headers=None, body=None):
         dict: 响应的 JSON 数据。
     """
     sig = signer.Signer()
-    sig.Key = "EUWCTMRJSEMOPXMQBYCQ"
-    sig.Secret = "3gPhrII9WTDX1utNevxkNgbzj09SypiI7MEkS9re"
+    sig.Key = "xxxx"
+    sig.Secret = "xxxx"
 
     r = signer.HttpRequest(method, url)
     if headers:
