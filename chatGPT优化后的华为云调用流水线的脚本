@@ -1,113 +1,106 @@
-# coding=utf-8
 import json
 import requests
 from apig_sdk import signer
 from datetime import datetime
 import sys
+import time
 
-def send_request(method, url, headers=None, body=None):
-    """
-    发送 HTTP 请求并返回响应。
-
-    Args:
-        method (str): 请求方法，如 'GET' 或 'POST'。
-        url (str): 请求的 URL。
-        headers (dict): 请求头部信息。
-        body (str): 请求体内容。
-
-    Returns:
-        dict: 响应的 JSON 数据。
-    """
+def sign_request(http_method, url, headers=None, body=None):
     sig = signer.Signer()
     sig.Key = "xxxx"
     sig.Secret = "xxxx"
+    req = signer.HttpRequest(http_method, url)
+    req.headers = headers or {}
+    req.body = json.dumps(body) if body else ""
+    req.url = url
+    sig.Sign(req)
+    return req
 
-    r = signer.HttpRequest(method, url)
-    if headers:
-        r.headers = headers
-    if body:
-        r.body = body
+def run_pipeline(pipeline_id, project_id, choose_jobs, choose_stages):
+    url = f"https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/{project_id}/api/pipelines/{pipeline_id}/run"
+    headers = {"content-type": "application/json"}
+    body = {
+        "sources": [],
+        "description": "",
+        "variables": [],
+        "choose_jobs": choose_jobs,
+        "choose_stages": choose_stages
+    }
+    req = sign_request("POST", url, headers=headers, body=body)
+    resp = requests.post(req.url, headers=req.headers, data=req.body)
+    data = resp.json()
+    return data.get('pipeline_run_id')
 
-    sig.Sign(r)
-    resp = requests.request(method, url, headers=r.headers, data=r.body)
-    resp.raise_for_status()  # 抛出异常如果请求失败
+def get_pipeline_status(project_id, pipeline_id, pipeline_run_id):
+    url = f"https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/{project_id}/api/pipelines/{pipeline_id}/pipeline-runs/detail?pipeline_run_id={pipeline_run_id}"
+    while True:
+        req = sign_request("GET", url, headers={"content-type": "application/json"})
+        response = requests.get(req.url, headers=req.headers)
+        data = response.json()
+        pipeline_run_status = data.get('status')
+        if pipeline_run_status != "RUNNING":
+            pipeline_name = data.get('name')
+            start_time = datetime.fromtimestamp(data.get('start_time') / 1000)
+            end_time = datetime.fromtimestamp(data.get('end_time') / 1000)
+            return {
+                'pipeline_name': pipeline_name,
+                'pipeline_run_status': pipeline_run_status,
+                'start_time': start_time,
+                'end_time': end_time
+            }
+        time.sleep(10)
 
-    return resp.json()
+def create_dingtalk_message(pipeline_name, start_time, end_time, pipeline_run_status, pipeline_url):
+    status_color = {
+        "COMPLETED": "#32CD32",
+        "FAILED": "#FF0000",
+        "OTHER": "#FFA500"
+    }
+    color = status_color.get(pipeline_run_status, "#FFA500")
+    text = f"### {pipeline_name} 测试用例完成\n\n" \
+           f"> **流水线名称:** {pipeline_name}\n\n" \
+           f"> **开始时间:** {start_time}\n\n" \
+           f"> **结束时间:** {end_time}\n\n" \
+           f"> **运行状态:** <font color={color}>{pipeline_run_status}</font>\n\n" \
+           f"> [**流水线地址**]({pipeline_url})\n\n" \
+           f"> **自动化测试** "
+    return {
+        "msgtype": "markdown",
+        "markdown": {
+            "title": "Spark Monitor",
+            "text": text
+        }
+    }
 
 def send_dingtalk_message(webhook_url, message):
-    """
-    发送消息到钉钉群。
-
-    Args:
-        webhook_url (str): 钉钉机器人的 Webhook URL。
-        message (dict): 要发送的消息内容。
-
-    Returns:
-        str: 响应文本。
-    """
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(webhook_url, data=json.dumps(message), headers=headers)
-    response.raise_for_status()  # 抛出异常如果请求失败
-
-    return response.text
+    try:
+        response = requests.post(webhook_url, data=json.dumps(message), headers=headers)
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.RequestException as e:
+        print("Error sending DingTalk message:", e)
+        sys.exit(1)
 
 if __name__ == '__main__':
     pipeline_id = "${PipelineID}"
     project_id = "${ProjectID}"
+    choose_jobs = ["${choose_jobs}"]
+    choose_stages = ["${choose_stages}"]
     
-    base_url = "https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5"
-    pipeline_run_url = f"{base_url}/{project_id}/api/pipelines/{pipeline_id}/run"
-    pipeline_detail_url = f"{base_url}/{project_id}/api/pipelines/{pipeline_id}/pipeline-runs/detail"
+    webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=c8fd136bc08598e3a9a4b9cb8b6ea7de80506f3ef5f221f586bc867ad7979227'
 
-    try:
-        # 发送运行流水线的请求
-        run_pipeline_response = send_request("POST", pipeline_run_url, headers={"content-type": "application/json"},
-                                             body='{"sources":[],"description":"","variables":[],"choose_jobs":["${choose_jobs}"],"choose_stages":["${choose_stages}"]}')
-        pipeline_run_id = run_pipeline_response['pipeline_run_id']
-        pipeline_url = f"https://devcloud.cn-east-3.huaweicloud.com/cicd/project/{project_id}/pipeline/detail/{pipeline_id}/{pipeline_run_id}?v=1"
-
-        # 循环获取流水线运行状态
-        while True:
-            pipeline_run_response = send_request("GET", f"{pipeline_detail_url}?pipeline_run_id={pipeline_run_id}")
-            pipeline_name = pipeline_run_response['name']
-            pipeline_run_status = pipeline_run_response['status']
-            pipeline_run_start_time = pipeline_run_response['start_time']
-            pipeline_run_end_time = pipeline_run_response['end_time']
-
-            start_date = datetime.fromtimestamp(pipeline_run_start_time / 1000)
-            end_date = datetime.fromtimestamp(pipeline_run_end_time / 1000)
-
-            if pipeline_run_status == "RUNNING":
-                continue
-            else:
-                break
-
-        # 构建消息
-        if pipeline_run_status == "COMPLETED":
-            text_color = "#32CD32"  # 绿色
-        elif pipeline_run_status == "FAILED":
-            text_color = "#FF0000"  # 红色
-        else:
-            text_color = "#FFA500"  # 橙色
-
-        message = {
-            "msgtype": "markdown",
-            "markdown": {
-                "title": "Spark Monitor",
-                "text": f"### {pipeline_name}测试用例完成\n\n"
-                        f"> **流水线名称:** {pipeline_name}\n\n"
-                        f"> **开始时间:** {start_date}\n\n" 
-                        f"> **结束时间:** {end_date}\n\n" 
-                        f"> **运行状态:** <font color={text_color}>{pipeline_run_status}</font>\n\n" 
-                        f"> [**流水线地址**]({pipeline_url})\n\n" 
-                        "> **自动化测试**"
-            }
-        }
-
-        # 发送消息到钉钉群
-        webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=425ff9a2f17b8143c46a951ad3eba20ff69e9b615fcb7d4b8b5bdf383dd56568'
-        send_dingtalk_message(webhook_url, message)
-
-    except Exception as e:
-        print("发生异常:", e)
-        sys.exit(1)
+    pipeline_run_id = run_pipeline(pipeline_id, project_id, choose_jobs, choose_stages)
+    if pipeline_run_id:
+        pipeline_status = get_pipeline_status(project_id, pipeline_id, pipeline_run_id)
+        if pipeline_status:
+            message = create_dingtalk_message(pipeline_status['pipeline_name'],
+                                              pipeline_status['start_time'],
+                                              pipeline_status['end_time'],
+                                              pipeline_status['pipeline_run_status'],
+                                              pipeline_url=f"https://devcloud.cn-east-3.huaweicloud.com/cicd/project/{project_id}/pipeline/detail/{pipeline_id}/{pipeline_run_id}?v=1")
+            response_text = send_dingtalk_message(webhook_url, message)
+            if pipeline_status['pipeline_run_status'] != "COMPLETED":
+                print("Pipeline run did not complete successfully. Exiting.")
+                sys.exit(1)
+            print(response_text)
