@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# 定义应用程序名称、版本和镜像名称
+APP_NAME="myapp"
+IMAGE_NAME="registry.example.com/myapp:v1"
+CONFIG_FILE="/path/to/deployment.yaml"
+
+# 检查 Kubernetes 集群是否可访问
+kubectl cluster-info > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "Error: Unable to connect to Kubernetes cluster."
+    exit 1
+fi
+
+# 创建或更新应用程序的 Deployment
+echo "Deploying $APP_NAME to Kubernetes cluster..."
+kubectl apply -f $CONFIG_FILE
+
+# 等待 Deployment 中的所有 Pod 运行起来
+echo "Waiting for pods to be ready..."
+kubectl wait --for=condition=ready pod -l app=$APP_NAME --timeout=300s > /dev/null 2>&1
+
+# 检查所有 Pod 是否都已经处于运行状态
+pods=$(kubectl get pods -l app=$APP_NAME --no-headers | wc -l)
+running_pods=$(kubectl get pods -l app=$APP_NAME --no-headers | grep -v -E "Running|Completed" | wc -l)
+if [ $pods -eq $running_pods ]; then
+    echo "Error: All pods failed to start."
+    exit 1
+fi
+
+# 将应用程序的镜像版本更新为最新的版本
+echo "Updating $APP_NAME to use the latest image..."
+kubectl set image deployment/$APP_NAME $APP_NAME=$IMAGE_NAME > /dev/null 2>&1
+
+# 执行滚动更新，确保新版本的应用程序能够平滑地替换旧版本
+echo "Rolling out the new version of $APP_NAME..."
+kubectl rollout status deployment/$APP_NAME > /dev/null 2>&1
+
+# 检查滚动更新是否成功完成
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to roll out the new version of $APP_NAME."
+    exit 1
+fi
+
+# 完成部署
+echo "Deployment completed successfully."
