@@ -84,7 +84,7 @@ def create_selector(token, service_name, service_Env_Name, service_Env_ID):
 
 if __name__ == "__main__":
     username = "admin"
-    password = "Lemon_123"
+    password = "xxx"
     token = login(username, password)
     Env_Name = "xz"
     Env_ID = 13
@@ -93,7 +93,6 @@ if __name__ == "__main__":
             "env_name": Env_Name,
             "env_id": Env_ID,
     } for service in ["amazon-retail", "amazonwms", "amazon-base", "amazon-retail-pos", "amazon-center", "amazon-pos", "amazon-report" , "argus", "base-server", "fund-server", "merv2-server" , "pos-amazoncenter" ,"usercenter" , "amazonwhsserver" ]
-    # } for service in ["amazon-retail","wms"]
     }
     if token:
         for service_name, info in service_data.items():
