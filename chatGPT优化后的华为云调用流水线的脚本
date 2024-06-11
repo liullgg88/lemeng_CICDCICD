@@ -1,9 +1,12 @@
+# coding=utf-8
 import json
 import requests
 from apig_sdk import signer
 from datetime import datetime
+from collections import Counter
 import sys
 import time
+import os
 
 def sign_request(http_method, url, headers=None, body=None):
     sig = signer.Signer()
@@ -15,6 +18,7 @@ def sign_request(http_method, url, headers=None, body=None):
     req.url = url
     sig.Sign(req)
     return req
+
 
 def run_pipeline(pipeline_id, project_id, choose_jobs, choose_stages):
     url = f"https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/{project_id}/api/pipelines/{pipeline_id}/run"
@@ -30,6 +34,7 @@ def run_pipeline(pipeline_id, project_id, choose_jobs, choose_stages):
     resp = requests.post(req.url, headers=req.headers, data=req.body)
     data = resp.json()
     return data.get('pipeline_run_id')
+
 
 def get_pipeline_status(project_id, pipeline_id, pipeline_run_id):
     url = f"https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/{project_id}/api/pipelines/{pipeline_id}/pipeline-runs/detail?pipeline_run_id={pipeline_run_id}"
@@ -50,14 +55,47 @@ def get_pipeline_status(project_id, pipeline_id, pipeline_run_id):
             }
         time.sleep(10)
 
+
+def get_pipeline_running_lists(project_id):
+    url = f"https://cloudpipeline-ext.cn-east-3.myhuaweicloud.com/v5/{project_id}/api/pipelines/list"
+    while True:
+        body = {
+            "offset": 0,
+            "limit": 20
+        }
+        headers = {'Content-Type': 'application/json;charset=UTF-8'}
+        # 使用 sign_request 函数签名请求
+        req = sign_request("POST", url, headers, body)
+        # 发送请求
+        try:
+            resp = requests.post(req.url, headers=req.headers, data=req.body)
+            resp.raise_for_status()  # 确保请求成功
+            # 解析并打印响应数据
+            data = resp.json()
+            list = []
+            for i in data['pipelines']:
+                # print(i['latest_run']["status"])
+                list.append(i['latest_run']["status"])
+            # print(list)
+            counter = Counter(list)
+            # print(counter["RUNNING"])
+            if counter["RUNNING"] == 0:
+                print("前面没有运行的流水线了")
+                break
+        except requests.RequestException as e:
+            print(f"请求发生错误: {e}")
+        # 等待10秒后再次检查
+        time.sleep(10)
+
 def create_dingtalk_message(pipeline_name, start_time, end_time, pipeline_run_status, pipeline_url):
     status_color = {
         "COMPLETED": "#32CD32",
         "FAILED": "#FF0000",
-        "OTHER": "#FFA500"
+        "OTHER": "#FFA500",
+        "RUNNING": "#32CD32"
     }
     color = status_color.get(pipeline_run_status, "#FFA500")
-    text = f"### {pipeline_name} 测试用例完成\n\n" \
+    text = f"### {pipeline_name} 调用测试用例完成\n\n" \
            f"> **流水线名称:** {pipeline_name}\n\n" \
            f"> **开始时间:** {start_time}\n\n" \
            f"> **结束时间:** {end_time}\n\n" \
@@ -72,6 +110,7 @@ def create_dingtalk_message(pipeline_name, start_time, end_time, pipeline_run_st
         }
     }
 
+
 def send_dingtalk_message(webhook_url, message):
     headers = {'Content-Type': 'application/json'}
     try:
@@ -82,16 +121,65 @@ def send_dingtalk_message(webhook_url, message):
         print("Error sending DingTalk message:", e)
         sys.exit(1)
 
-if __name__ == '__main__':
-    pipeline_id = "${PipelineID}"
-    project_id = "${ProjectID}"
-    choose_jobs = ["${choose_jobs}"]
-    choose_stages = ["${choose_stages}"]
-    
-    webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=c8fd136bc08598e3a9a4b9cb8b6ea7de80506f3ef5f221f586bc867ad7979227'
+def check_process_exists(pid):
+    """Check if a process with the given PID exists."""
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    else:
+        return True
 
+def wait_or_execute(pid):
+    """Wait for a process with the given PID to exit, or execute a command if it doesn't exist."""
+    if check_process_exists(pid):
+        print(f"Process {pid} exists, waiting...")
+        # 这里我们使用简单的轮询来模拟等待，但这不是最高效的方法
+        # 在实际应用中，你可能需要更复杂的逻辑或第三方库来等待进程
+        while check_process_exists(pid):
+            time.sleep(1)  # 等待1秒然后再次检查
+        print(f"Process {pid} has exited.")
+    else:
+        print(f"Process {pid} does not exist, executing command: ")
+
+
+if __name__ == '__main__':
+    dict_mapping = {
+        # "retail-lll": '{"pipeline_id": "d7580ec1f3ab4f7bae2028c8bd5c66cd", "choose_jobs": ["168864794392314618d37-850e-46c8-b911-d2d644b19430"], "choose_stages": [0]}',
+        "retail-nnn": '{"pipeline_id": "third_id", "choose_jobs": [], "choose_stages": []}',
+        # "retail-nnn": '{"pipeline_id": "third_id", "choose_jobs": [], "choose_stages": []}',
+        # 可以继续添加更多键值对...
+    }
+    # json_string = sys.argv[1]
+    dict_key_string = sys.argv[1]
+    pid = int(sys.argv[2])
+    if pid != 2:
+        wait_or_execute(pid)
+    else:
+        pass
+    data = json.loads(dict_mapping[dict_key_string])
+    # print(data)
+    # data = {"pipeline_id": "d7580ec1f3ab4f7bae2028c8bd5c66cd", "choose_jobs": "168864794392314618d37-850e-46c8-b911-d2d644b19430", "choose_stages": 0}
+    project_id = "8672d4f0470f4eaf8bd75e2589934d21"
+    pipeline_id = data['pipeline_id']
+    choose_jobs = data['choose_jobs']
+    choose_stages = data['choose_stages']
+    # pipeline_id = "${PipelineID}"
+    # project_id = "${ProjectID}"
+    # choose_jobs = ["${choose_jobs}"]
+    # choose_stages = ["${choose_stages}"]
+
+    # webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=c8fd136bc08598e3a9a4b9cb8b6ea7de80506f3ef5f221f586bc867ad7979227'
+    webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=425ff9a2f17b8143c46a951ad3eba20ff69e9b615fcb7d4b8b5bdf383dd56568'
+    get_pipeline_running_lists(project_id)
     pipeline_run_id = run_pipeline(pipeline_id, project_id, choose_jobs, choose_stages)
     if pipeline_run_id:
+        # message = create_dingtalk_message(pipeline_status['pipeline_name'],
+        #                                   pipeline_status['start_time'],
+        #                                   pipeline_status['end_time'],
+        #                                   pipeline_status['pipeline_run_status'],
+        #                                   pipeline_url=f"https://devcloud.cn-east-3.huaweicloud.com/cicd/project/{project_id}/pipeline/detail/{pipeline_id}/{pipeline_run_id}?v=1")
+        # response_text = send_dingtalk_message(webhook_url, message)
         pipeline_status = get_pipeline_status(project_id, pipeline_id, pipeline_run_id)
         if pipeline_status:
             message = create_dingtalk_message(pipeline_status['pipeline_name'],
